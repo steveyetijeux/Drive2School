@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} — Drive2School{% endblock %}
+
+{% block content %}
+<div class="container narrow">
+    <div class="form-card">
+        <span class="eyebrow">TRAJET</span>
+        <h1>{{ title }}</h1>
+
+        <form method="post" class="styled-form">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+
+            {% for field in form %}
+                <p>
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                    {% for error in field.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                </p>
+            {% endfor %}
+
+            <button class="button button-primary full" type="submit">Enregistrer</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Mon espace — Drive2School{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div class="container">
+        <span class="eyebrow">DRIVE2SCHOOL</span>
+        <h1>Bonjour {{ user.username }} 👋</h1>
+        <p>Gérez vos trajets et vos réservations.</p>
+    </div>
+</section>
+
+<div class="container dashboard-grid">
+    <section class="dashboard-section">
+        <div class="section-heading compact">
+            <h2>Mes trajets</h2>
+            <a href="{% url 'trip_create' %}">+ Publier</a>
+        </div>
+
+        {% if my_trips %}
+            {% for trip in my_trips %}
+                <article class="mini-card">
+                    <div>
+                        <strong>{{ trip.departure }} → {{ trip.destination }}</strong>
+                        <span>{{ trip.date|date:"d/m/Y" }} · {{ trip.departure_time|time:"H:i" }}</span>
+                    </div>
+                    <a href="{% url 'trip_detail' trip.pk %}">Voir</a>
+                </article>
+            {% endfor %}
+        {% else %}
+            <div class="empty-small">Vous n'avez pas encore publié de trajet.</div>
+        {% endif %}
+    </section>
+
+    <section class="dashboard-section">
+        <div class="section-heading compact">
+            <h2>Mes réservations</h2>
+            <a href="{% url 'my_reservations' %}">Tout voir</a>
+        </div>
+
+        {% if my_reservations %}
+            {% for reservation in my_reservations %}
+                <article class="mini-card">
+                    <div>
+                        <strong>{{ reservation.trip.departure }} → {{ reservation.trip.destination }}</strong>
+                        <span>{{ reservation.trip.date|date:"d/m/Y" }} · {{ reservation.trip.departure_time|time:"H:i" }}</span>
+                    </div>
+                    <a href="{% url 'trip_detail' reservation.trip.pk %}">Voir</a>
+                </article>
+            {% endfor %}
+        {% else %}
+            <div class="empty-small">Vous n'avez aucune réservation active.</div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Supprimer le trajet — Drive2School{% endblock %}
+
+{% block content %}
+<div class="container narrow">
+    <div class="form-card">
+        <span class="eyebrow">ATTENTION</span>
+        <h1>Supprimer ce trajet ?</h1>
+        <p>
+            {{ trip.departure }} → {{ trip.destination }} —
+            {{ trip.date|date:"d/m/Y" }}
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+            <button class="button button-danger full" type="submit">Oui, supprimer</button>
+        </form>
+
+        <a class="button button-secondary full" href="{% url 'trip_detail' trip.pk %}">Annuler</a>
+    </div>
+</div>
+{% endblock %}

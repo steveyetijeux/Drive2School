@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Inscription — Drive2School{% endblock %}
+
+{% block content %}
+<div class="container narrow">
+    <div class="form-card">
+        <span class="eyebrow">BIENVENUE</span>
+        <h1>Créer un compte</h1>
+        <p class="muted">Rejoignez Drive2School en quelques secondes.</p>
+
+        <form method="post" class="styled-form">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="button button-primary full" type="submit">Créer mon compte</button>
+        </form>
+
+        <p class="form-footer">
+            Déjà inscrit ?
+            <a href="{% url 'login' %}">Se connecter</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

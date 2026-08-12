@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Drive2School — Accueil{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <img src="{% static 'images/hero.jpg' %}" alt="Route vers un établissement scolaire au coucher du soleil">
+    <div class="hero-overlay">
+        <div class="container hero-content">
+            <span class="eyebrow">MOBILITÉ SCOLAIRE</span>
+            <h1>Le trajet vers l'école, autrement.</h1>
+            <p>
+                Trouvez un trajet, partagez votre voiture et simplifiez les déplacements
+                entre élèves, familles et conducteurs.
+            </p>
+            <div class="hero-actions">
+                <a class="button button-primary" href="{% url 'trip_list' %}">Trouver un trajet</a>
+                {% if user.is_authenticated %}
+                    <a class="button button-light" href="{% url 'trip_create' %}">Publier un trajet</a>
+                {% else %}
+                    <a class="button button-light" href="{% url 'register' %}">Créer un compte</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="container feature-section">
+    <div class="section-heading">
+        <span class="eyebrow">SIMPLE • PRATIQUE • LOCAL</span>
+        <h2>Une plateforme pensée pour les trajets scolaires</h2>
+    </div>
+
+    <div class="feature-grid">
+        <article class="feature-card">
+            <div class="feature-icon">1</div>
+            <h3>Trouvez</h3>
+            <p>Recherchez facilement les trajets correspondant à votre destination et votre date.</p>
+        </article>
+
+        <article class="feature-card">
+            <div class="feature-icon">2</div>
+            <h3>Réservez</h3>
+            <p>Choisissez un trajet et réservez votre place en quelques secondes.</p>
+        </article>
+
+        <article class="feature-card">
+            <div class="feature-icon">3</div>
+            <h3>Partagez</h3>
+            <p>Publiez vos propres trajets et faites profiter d'autres élèves de vos déplacements.</p>
+        </article>
+    </div>
+</section>
+{% endblock %}

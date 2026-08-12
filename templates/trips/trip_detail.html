@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}{{ trip.departure }} → {{ trip.destination }} — Drive2School{% endblock %}
+
+{% block content %}
+<div class="container detail-layout">
+    <article class="detail-card">
+        <span class="eyebrow">TRAJET</span>
+        <h1>{{ trip.departure }} <span class="route-arrow">→</span> {{ trip.destination }}</h1>
+
+        <div class="detail-info-grid">
+            <div>
+                <span class="label">Date</span>
+                <strong>{{ trip.date|date:"l d F Y" }}</strong>
+            </div>
+            <div>
+                <span class="label">Horaires</span>
+                <strong>{{ trip.departure_time|time:"H:i" }} → {{ trip.arrival_time|time:"H:i" }}</strong>
+            </div>
+            <div>
+                <span class="label">Conducteur</span>
+                <strong>{{ trip.driver.username }}</strong>
+            </div>
+            <div>
+                <span class="label">Places restantes</span>
+                <strong>{{ trip.remaining_seats }} / {{ trip.max_seats }}</strong>
+            </div>
+        </div>
+
+        {% if trip.description %}
+            <div class="description">
+                <h2>Informations</h2>
+                <p>{{ trip.description|linebreaksbr }}</p>
+            </div>
+        {% endif %}
+    </article>
+
+    <aside class="action-card">
+        {% if user.is_authenticated %}
+            {% if user == trip.driver %}
+                <p class="muted">Vous êtes le conducteur de ce trajet.</p>
+                <a class="button button-primary full" href="{% url 'trip_edit' trip.pk %}">Modifier</a>
+                <a class="button button-danger full" href="{% url 'trip_delete' trip.pk %}">Supprimer</a>
+            {% elif trip.remaining_seats > 0 %}
+                <h2>Réserver une place</h2>
+                <p>{{ trip.remaining_seats }} place{{ trip.remaining_seats|pluralize }} disponible{{ trip.remaining_seats|pluralize }}.</p>
+                <form method="post" action="{% url 'reservation_create' trip.pk %}">
+                    {% csrf_token %}
+                    <button class="button button-primary full" type="submit">Réserver</button>
+                </form>
+            {% else %}
+                <h2>Trajet complet</h2>
+                <p>Il n'y a plus de place disponible.</p>
+            {% endif %}
+        {% else %}
+            <h2>Intéressé ?</h2>
+            <p>Connectez-vous pour réserver une place.</p>
+            <a class="button button-primary full" href="{% url 'login' %}?next={{ request.path }}">Se connecter</a>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

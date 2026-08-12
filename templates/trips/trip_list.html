@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Trajets — Drive2School{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div class="container">
+        <span class="eyebrow">DRIVE2SCHOOL</span>
+        <h1>Trajets disponibles</h1>
+        <p>Trouvez un trajet correspondant à votre besoin.</p>
+    </div>
+</section>
+
+<div class="container">
+    <form method="get" class="search-card">
+        <div>
+            <label for="q">Départ ou destination</label>
+            <input id="q" name="q" type="search" value="{{ query }}" placeholder="Ex. Dublin, Cork...">
+        </div>
+        <div>
+            <label for="date">Date</label>
+            <input id="date" name="date" type="date" value="{{ selected_date }}">
+        </div>
+        <button class="button button-primary" type="submit">Rechercher</button>
+        <a class="button button-secondary" href="{% url 'trip_list' %}">Réinitialiser</a>
+    </form>
+
+    {% if trips %}
+        <div class="trip-grid">
+            {% for trip in trips %}
+                <article class="trip-card">
+                    <div class="trip-top">
+                        <span class="date-badge">{{ trip.date|date:"d/m/Y" }}</span>
+                        <span class="seats-badge">{{ trip.remaining_seats }} place{{ trip.remaining_seats|pluralize }} restante{{ trip.remaining_seats|pluralize }}</span>
+                    </div>
+
+                    <div class="route">
+                        <strong>{{ trip.departure }}</strong>
+                        <span>→</span>
+                        <strong>{{ trip.destination }}</strong>
+                    </div>
+
+                    <div class="trip-meta">
+                        <span>{{ trip.departure_time|time:"H:i" }} — {{ trip.arrival_time|time:"H:i" }}</span>
+                        <span>Conducteur : {{ trip.driver.username }}</span>
+                    </div>
+
+                    {% if trip.description %}
+                        <p>{{ trip.description|truncatechars:120 }}</p>
+                    {% endif %}
+
+                    <a class="button button-primary full" href="{% url 'trip_detail' trip.pk %}">
+                        Voir le trajet
+                    </a>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h2>Aucun trajet trouvé</h2>
+            <p>Essayez une autre recherche ou publiez le premier trajet.</p>
+            {% if user.is_authenticated %}
+                <a class="button button-primary" href="{% url 'trip_create' %}">Publier un trajet</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

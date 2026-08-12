@@ -1,0 +1,1 @@
+Les tests automatisés seront complétés après le premier démarrage sur l'autre ordinateur.
