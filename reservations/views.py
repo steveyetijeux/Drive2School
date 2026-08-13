@@ -10,13 +10,23 @@ from .models import Reservation
 
 @login_required
 def reservation_create(request, trip_id):
+    trip = get_object_or_404(Trip, pk=trip_id)
+
     if request.method != "POST":
         return redirect("trip_detail", pk=trip_id)
 
-    trip = get_object_or_404(Trip, pk=trip_id)
-
     if trip.driver_id == request.user.id:
         messages.error(request, "Vous conduisez déjà ce trajet.")
+        return redirect("trip_detail", pk=trip.id)
+
+    pickup_address = request.POST.get("pickup_address", "").strip()
+    dropoff_address = request.POST.get("dropoff_address", "").strip()
+
+    if not pickup_address or not dropoff_address:
+        messages.error(
+            request,
+            "Veuillez renseigner votre adresse de montée et votre adresse de descente.",
+        )
         return redirect("trip_detail", pk=trip.id)
 
     existing = Reservation.objects.filter(
@@ -30,6 +40,7 @@ def reservation_create(request, trip_id):
 
     with transaction.atomic():
         trip = Trip.objects.select_for_update().get(pk=trip.id)
+
         active_count = Reservation.objects.filter(
             trip=trip,
             status=Reservation.STATUS_CONFIRMED,
@@ -41,11 +52,21 @@ def reservation_create(request, trip_id):
 
         if existing:
             existing.status = Reservation.STATUS_CONFIRMED
-            existing.save(update_fields=["status"])
+            existing.pickup_address = pickup_address
+            existing.dropoff_address = dropoff_address
+            existing.save(
+                update_fields=[
+                    "status",
+                    "pickup_address",
+                    "dropoff_address",
+                ]
+            )
         else:
             Reservation.objects.create(
                 trip=trip,
                 passenger=request.user,
+                pickup_address=pickup_address,
+                dropoff_address=dropoff_address,
                 status=Reservation.STATUS_CONFIRMED,
             )
 
@@ -71,13 +92,18 @@ def reservation_cancel(request, reservation_id):
 
 @login_required
 def my_reservations(request):
-    reservations = Reservation.objects.select_related(
-        "trip",
-        "trip__driver",
-    ).filter(
-        passenger=request.user,
-        status=Reservation.STATUS_CONFIRMED,
+    reservations = (
+        Reservation.objects
+        .select_related(
+            "trip",
+            "trip__driver",
+        )
+        .filter(
+            passenger=request.user,
+            status=Reservation.STATUS_CONFIRMED,
+        )
     )
+
     return render(
         request,
         "reservations/my_reservations.html",

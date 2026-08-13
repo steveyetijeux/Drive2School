@@ -45,9 +45,36 @@
                 <h2>Réserver une place</h2>
                 <p>{{ trip.remaining_seats }} place{{ trip.remaining_seats|pluralize }} disponible{{ trip.remaining_seats|pluralize }}.</p>
                 <form method="post" action="{% url 'reservation_create' trip.pk %}">
-                    {% csrf_token %}
-                    <button class="button button-primary full" type="submit">Réserver</button>
-                </form>
+    {% csrf_token %}
+
+    <div class="form-group">
+        <label for="pickup_address">Adresse de montée</label>
+        <input
+            type="text"
+            id="pickup_address"
+            name="pickup_address"
+            maxlength="255"
+            placeholder="Ex. 12 rue de la Gare, Paris"
+            required
+        >
+    </div>
+
+    <div class="form-group">
+        <label for="dropoff_address">Adresse de descente</label>
+        <input
+            type="text"
+            id="dropoff_address"
+            name="dropoff_address"
+            maxlength="255"
+            placeholder="Ex. Lycée Jean Moulin, Paris"
+            required
+        >
+    </div>
+
+    <button class="button button-primary full" type="submit">
+        Réserver
+    </button>
+</form>
             {% else %}
                 <h2>Trajet complet</h2>
                 <p>Il n'y a plus de place disponible.</p>

@@ -20,18 +20,33 @@ class Reservation(models.Model):
         related_name="reservations",
         verbose_name="Trajet",
     )
+
     passenger = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name="reservations",
         verbose_name="Passager",
     )
+
+    pickup_address = models.CharField(
+        "Adresse de montée",
+        max_length=255,
+        blank=True,
+    )
+
+    dropoff_address = models.CharField(
+        "Adresse de descente",
+        max_length=255,
+        blank=True,
+    )
+
     status = models.CharField(
         "Statut",
         max_length=20,
         choices=STATUS_CHOICES,
         default=STATUS_CONFIRMED,
     )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -45,7 +60,9 @@ class Reservation(models.Model):
 
     def clean(self):
         if self.trip.driver_id == self.passenger_id:
-            raise ValidationError("Le conducteur ne peut pas réserver son propre trajet.")
+            raise ValidationError(
+                "Le conducteur ne peut pas réserver son propre trajet."
+            )
 
         if (
             self.status == self.STATUS_CONFIRMED
