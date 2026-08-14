@@ -2,8 +2,9 @@ from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.db import models
-from django.db.models import Sum
+from django.db import transaction
+from django.db.models import Sum, Value
+from django.db.models.functions import Coalesce
 from django.shortcuts import render
 from django.utils import timezone
 
@@ -24,6 +25,9 @@ REWARD_LEVELS = [
 
 
 def trip_is_finished(trip):
+    """
+    Retourne True si le trajet est terminé.
+    """
     current_time = timezone.localtime()
 
     trip_datetime = timezone.make_aware(
@@ -38,6 +42,18 @@ def trip_is_finished(trip):
 
 
 def award_points_for_finished_trips(user=None):
+    """
+    Attribue automatiquement les points pour les trajets terminés.
+
+    Conducteur :
+        +1 point par trajet terminé.
+
+    Passager :
+        +2 points par réservation confirmée sur un trajet terminé.
+
+    get_or_create() empêche d'attribuer plusieurs fois les mêmes points.
+    """
+
     trips = Trip.objects.all()
 
     if user is not None:
@@ -47,7 +63,10 @@ def award_points_for_finished_trips(user=None):
         if not trip_is_finished(trip):
             continue
 
-        # +1 point pour le conducteur
+        # ============================================================
+        # CONDUCTEUR : +1 point
+        # ============================================================
+
         PointTransaction.objects.get_or_create(
             user=trip.driver,
             trip=trip,
@@ -61,7 +80,10 @@ def award_points_for_finished_trips(user=None):
             },
         )
 
-        # +2 points pour chaque passager confirmé
+        # ============================================================
+        # PASSAGERS : +2 points
+        # ============================================================
+
         reservations = (
             Reservation.objects
             .filter(
@@ -88,43 +110,69 @@ def award_points_for_finished_trips(user=None):
 
 
 def get_user_points(user):
+    """
+    Retourne le nombre total de points d'un utilisateur.
+    """
+
     return (
         PointTransaction.objects
         .filter(user=user)
-        .aggregate(total=Sum("points"))["total"]
-        or 0
+        .aggregate(
+            total=Coalesce(
+                Sum("points"),
+                Value(0),
+            )
+        )["total"]
     )
-
-
-def get_next_reward(user_points):
-    for threshold, name in REWARD_LEVELS:
-        if user_points < threshold:
-            return {
-                "points": threshold,
-                "name": name,
-                "remaining": threshold - user_points,
-            }
-
-    return None
 
 
 @login_required
 def rewards_dashboard(request):
+    """
+    Page principale des récompenses.
+    """
+
+    # Vérifie les trajets terminés et attribue les points nécessaires.
     award_points_for_finished_trips()
+
+    # ============================================================
+    # POINTS DE L'UTILISATEUR CONNECTÉ
+    # ============================================================
 
     user_points = get_user_points(request.user)
 
+    # ============================================================
+    # CLASSEMENT
+    # ============================================================
+
     leaderboard = (
         User.objects
-        .annotate(total_points=models.Sum("point_transactions__points"))
-        .order_by("-total_points", "username")
+        .annotate(
+            total_points=Coalesce(
+                Sum("point_transactions__points"),
+                Value(0),
+            )
+        )
+        .order_by(
+            "-total_points",
+            "username",
+        )
     )
+
+    # ============================================================
+    # HISTORIQUE DES TRANSACTIONS
+    # ============================================================
 
     transactions = (
         PointTransaction.objects
         .filter(user=request.user)
         .select_related("trip")
+        .order_by("-created_at")
     )[:20]
+
+    # ============================================================
+    # PROCHAINE RÉCOMPENSE
+    # ============================================================
 
     next_reward = None
 
@@ -137,6 +185,10 @@ def rewards_dashboard(request):
             }
             break
 
+    # ============================================================
+    # AFFICHAGE
+    # ============================================================
+
     return render(
         request,
         "rewards/rewards.html",
@@ -145,5 +197,6 @@ def rewards_dashboard(request):
             "leaderboard": leaderboard,
             "transactions": transactions,
             "next_reward": next_reward,
+            "reward_levels": REWARD_LEVELS,
         },
     )
