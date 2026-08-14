@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Mes points — Drive2School{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+    <div class="container">
+        <span class="eyebrow">DRIVE2SCHOOL</span>
+        <h1>Mes points 🎯</h1>
+        <p>
+            Chaque trajet proposé et chaque passager transporté vous rapportent des points.
+        </p>
+    </div>
+</section>
+
+<div class="container dashboard-grid">
+
+    <!-- SOLDE -->
+    <section class="dashboard-section">
+
+        <div class="section-heading compact">
+            <h2>Mon score</h2>
+        </div>
+
+        <article class="mini-card">
+            <div>
+                <strong>{{ user_points }} points</strong>
+
+                {% if next_reward %}
+                    <span>
+                        Plus que {{ next_reward.remaining }} point{{ next_reward.remaining|pluralize }}
+                        avant :
+                        <strong>{{ next_reward.name }}</strong>
+                    </span>
+                {% else %}
+                    <span>
+                        🎉 Vous avez atteint toutes les récompenses !
+                    </span>
+                {% endif %}
+            </div>
+        </article>
+
+    </section>
+
+
+    <!-- RÉCOMPENSES -->
+    <section class="dashboard-section">
+
+        <div class="section-heading compact">
+            <h2>Les récompenses</h2>
+        </div>
+
+        {% for threshold, name in reward_levels %}
+
+            <article class="mini-card">
+                <div>
+                    <strong>{{ threshold }} points</strong>
+                    <span>{{ name }}</span>
+                </div>
+
+                {% if user_points >= threshold %}
+                    <span>✓ Débloquée</span>
+                {% else %}
+                    <span>
+                        Encore {{ threshold|add:"-"|add:user_points }} points
+                    </span>
+                {% endif %}
+            </article>
+
+        {% endfor %}
+
+    </section>
+
+
+    <!-- HISTORIQUE -->
+    <section class="dashboard-section">
+
+        <div class="section-heading compact">
+            <h2>Mon historique</h2>
+        </div>
+
+        {% if transactions %}
+
+            {% for transaction in transactions %}
+
+                <article class="mini-card">
+                    <div>
+                        <strong>
+                            {% if transaction.points > 0 %}
+                                +{{ transaction.points }} points
+                            {% else %}
+                                {{ transaction.points }} points
+                            {% endif %}
+                        </strong>
+
+                        <span>
+                            {{ transaction.description }}
+                        </span>
+
+                        <span>
+                            {{ transaction.created_at|date:"d/m/Y à H:i" }}
+                        </span>
+                    </div>
+                </article>
+
+            {% endfor %}
+
+        {% else %}
+
+            <div class="empty-small">
+                Aucun point gagné pour le moment.
+                <br>
+                Publiez votre premier trajet pour commencer !
+            </div>
+
+        {% endif %}
+
+    </section>
+
+
+    <!-- CLASSEMENT -->
+    <section class="dashboard-section">
+
+        <div class="section-heading compact">
+            <h2>Classement</h2>
+        </div>
+
+        {% if leaderboard %}
+
+            {% for player in leaderboard %}
+
+                <article class="mini-card">
+
+                    <div>
+                        <strong>
+                            {{ forloop.counter }}.
+                            {{ player.username }}
+                        </strong>
+
+                        <span>
+                            {{ player.total_points|default:0 }} points
+                        </span>
+                    </div>
+
+                </article>
+
+            {% endfor %}
+
+        {% else %}
+
+            <div class="empty-small">
+                Le classement apparaîtra bientôt.
+            </div>
+
+        {% endif %}
+
+    </section>
+
+</div>
+
+{% endblock %}
