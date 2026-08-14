@@ -3,6 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from reservations.models import Reservation
+
 from .forms import TripForm
 from .models import Trip
 
@@ -35,7 +37,36 @@ def trip_detail(request, pk):
         Trip.objects.select_related("driver"),
         pk=pk,
     )
-    return render(request, "trips/trip_detail.html", {"trip": trip})
+
+    user_reservation = None
+
+    if request.user.is_authenticated:
+        user_reservation = (
+            Reservation.objects.filter(
+                trip=trip,
+                passenger=request.user,
+            )
+            .first()
+        )
+
+    passenger_reservations = []
+
+    if request.user.is_authenticated and request.user == trip.driver:
+        passenger_reservations = (
+            Reservation.objects.select_related("passenger")
+            .filter(trip=trip)
+            .order_by("created_at")
+        )
+
+    return render(
+        request,
+        "trips/trip_detail.html",
+        {
+            "trip": trip,
+            "user_reservation": user_reservation,
+            "passenger_reservations": passenger_reservations,
+        },
+    )
 
 
 @login_required
@@ -87,4 +118,8 @@ def trip_delete(request, pk):
         messages.success(request, "Le trajet a été supprimé.")
         return redirect("trip_list")
 
-    return render(request, "trips/trip_confirm_delete.html", {"trip": trip})
+    return render(
+        request,
+        "trips/trip_confirm_delete.html",
+        {"trip": trip},
+    )

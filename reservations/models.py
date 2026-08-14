@@ -6,11 +6,15 @@ from trips.models import Trip
 
 
 class Reservation(models.Model):
+    STATUS_PENDING = "pending"
     STATUS_CONFIRMED = "confirmed"
+    STATUS_REJECTED = "rejected"
     STATUS_CANCELLED = "cancelled"
 
     STATUS_CHOICES = [
-        (STATUS_CONFIRMED, "Confirmée"),
+        (STATUS_PENDING, "En attente"),
+        (STATUS_CONFIRMED, "Acceptée"),
+        (STATUS_REJECTED, "Refusée"),
         (STATUS_CANCELLED, "Annulée"),
     ]
 
@@ -31,20 +35,18 @@ class Reservation(models.Model):
     pickup_address = models.CharField(
         "Adresse de montée",
         max_length=255,
-        blank=True,
     )
 
     dropoff_address = models.CharField(
         "Adresse de descente",
         max_length=255,
-        blank=True,
     )
 
     status = models.CharField(
         "Statut",
         max_length=20,
         choices=STATUS_CHOICES,
-        default=STATUS_CONFIRMED,
+        default=STATUS_PENDING,
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

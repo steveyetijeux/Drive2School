@@ -3,44 +3,129 @@
 {% block title %}Mes réservations — Drive2School{% endblock %}
 
 {% block content %}
+
 <section class="page-header">
     <div class="container">
         <span class="eyebrow">MON ESPACE</span>
         <h1>Mes réservations</h1>
+        <p>Suivez l'état de vos demandes de trajet.</p>
     </div>
 </section>
 
 <div class="container">
+
     {% if reservations %}
+
         <div class="trip-grid">
+
             {% for reservation in reservations %}
+
                 <article class="trip-card">
-                    <span class="date-badge">{{ reservation.trip.date|date:"d/m/Y" }}</span>
+
+                    <span class="date-badge">
+                        {{ reservation.trip.date|date:"d/m/Y" }}
+                    </span>
+
                     <div class="route">
                         <strong>{{ reservation.trip.departure }}</strong>
                         <span>→</span>
                         <strong>{{ reservation.trip.destination }}</strong>
                     </div>
+
                     <div class="trip-meta">
-                        <span>{{ reservation.trip.departure_time|time:"H:i" }}</span>
-                        <span>{{ reservation.trip.driver.username }}</span>
+                        <span>
+                            {{ reservation.trip.departure_time|time:"H:i" }}
+                        </span>
+
+                        <span>
+                            {{ reservation.trip.driver.username }}
+                        </span>
                     </div>
-                    <a class="button button-primary full" href="{% url 'trip_detail' reservation.trip.pk %}">
+
+                    <div class="description">
+
+                        <p>
+                            <strong>📍 Montée :</strong>
+                            {{ reservation.pickup_address }}
+                        </p>
+
+                        <p>
+                            <strong>🏁 Descente :</strong>
+                            {{ reservation.dropoff_address }}
+                        </p>
+
+                    </div>
+
+                    {% if reservation.status == "pending" %}
+
+                        <div class="empty-small">
+                            🟠 En attente de validation du conducteur.
+                        </div>
+
+                    {% elif reservation.status == "confirmed" %}
+
+                        <div class="empty-small">
+                            🟢 <strong>Trajet accepté ✓</strong>
+                        </div>
+
+                    {% elif reservation.status == "rejected" %}
+
+                        <div class="empty-small">
+                            🔴 <strong>Demande refusée par le conducteur.</strong>
+                        </div>
+
+                    {% endif %}
+
+                    <a
+                        class="button button-primary full"
+                        href="{% url 'trip_detail' reservation.trip.pk %}"
+                    >
                         Voir le trajet
                     </a>
-                    <form method="post" action="{% url 'reservation_cancel' reservation.pk %}">
-                        {% csrf_token %}
-                        <button class="button button-danger full" type="submit">Annuler la réservation</button>
-                    </form>
+
+                    {% if reservation.status == "pending" or reservation.status == "confirmed" %}
+
+                        <form
+                            method="post"
+                            action="{% url 'reservation_cancel' reservation.pk %}"
+                        >
+                            {% csrf_token %}
+
+                            <button
+                                class="button button-danger full"
+                                type="submit"
+                            >
+                                Annuler la réservation
+                            </button>
+                        </form>
+
+                    {% endif %}
+
                 </article>
+
             {% endfor %}
+
         </div>
+
     {% else %}
+
         <div class="empty-state">
             <h2>Aucune réservation</h2>
-            <p>Vous n'avez actuellement aucune réservation active.</p>
-            <a class="button button-primary" href="{% url 'trip_list' %}">Chercher un trajet</a>
+
+            <p>
+                Vous n'avez actuellement aucune réservation active.
+            </p>
+
+            <a
+                class="button button-primary"
+                href="{% url 'trip_list' %}"
+            >
+                Chercher un trajet
+            </a>
         </div>
+
     {% endif %}
+
 </div>
+
 {% endblock %}

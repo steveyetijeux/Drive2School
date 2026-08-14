@@ -7,11 +7,13 @@
     <div class="container">
         <span class="eyebrow">DRIVE2SCHOOL</span>
         <h1>Bonjour {{ user.username }} 👋</h1>
-        <p>Gérez vos trajets et vos réservations.</p>
+        <p>Gérez vos trajets, vos passagers et vos réservations.</p>
     </div>
 </section>
 
 <div class="container dashboard-grid">
+
+    <!-- MES TRAJETS / PASSAGERS -->
     <section class="dashboard-section">
         <div class="section-heading compact">
             <h2>Mes trajets</h2>
@@ -20,38 +22,188 @@
 
         {% if my_trips %}
             {% for trip in my_trips %}
+
                 <article class="mini-card">
                     <div>
-                        <strong>{{ trip.departure }} → {{ trip.destination }}</strong>
-                        <span>{{ trip.date|date:"d/m/Y" }} · {{ trip.departure_time|time:"H:i" }}</span>
+                        <strong>
+                            {{ trip.departure }} → {{ trip.destination }}
+                        </strong>
+                        <span>
+                            {{ trip.date|date:"d/m/Y" }}
+                            ·
+                            {{ trip.departure_time|time:"H:i" }}
+                        </span>
                     </div>
-                    <a href="{% url 'trip_detail' trip.pk %}">Voir</a>
+
+                    <a href="{% url 'trip_detail' trip.pk %}">
+                        Voir
+                    </a>
                 </article>
+
+                {% with reservations=trip.reservations.all %}
+                    {% if reservations %}
+                        <div class="reservation-management">
+
+                            <h3>
+                                Passagers
+                            </h3>
+
+                            {% for reservation in reservations %}
+
+                                <div class="mini-card">
+                                    <div>
+
+                                        <strong>
+                                            {{ reservation.passenger.get_full_name|default:reservation.passenger.username }}
+                                        </strong>
+
+                                        <span>
+                                            📍 {{ reservation.pickup_address }}
+                                        </span>
+
+                                        <span>
+                                            🏁 {{ reservation.dropoff_address }}
+                                        </span>
+
+                                        <span>
+                                            {% if reservation.status == "pending" %}
+                                                🟠 En attente de votre validation
+                                            {% elif reservation.status == "confirmed" %}
+                                                🟢 Réservation acceptée ✓
+                                            {% elif reservation.status == "rejected" %}
+                                                🔴 Demande refusée
+                                            {% elif reservation.status == "cancelled" %}
+                                                ⚪ Réservation annulée
+                                            {% endif %}
+                                        </span>
+
+                                    </div>
+
+                                    {% if reservation.status == "pending" %}
+
+                                        <div>
+                                            <form
+                                                method="post"
+                                                action="{% url 'reservation_accept' reservation.pk %}"
+                                            >
+                                                {% csrf_token %}
+                                                <button
+                                                    class="button button-primary"
+                                                    type="submit"
+                                                >
+                                                    ✓ Accepter
+                                                </button>
+                                            </form>
+
+                                            <form
+                                                method="post"
+                                                action="{% url 'reservation_reject' reservation.pk %}"
+                                            >
+                                                {% csrf_token %}
+                                                <button
+                                                    class="button button-danger"
+                                                    type="submit"
+                                                >
+                                                    Refuser
+                                                </button>
+                                            </form>
+                                        </div>
+
+                                    {% endif %}
+
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+                    {% else %}
+
+                        <div class="empty-small">
+                            Aucun passager pour ce trajet.
+                        </div>
+
+                    {% endif %}
+                {% endwith %}
+
             {% endfor %}
         {% else %}
-            <div class="empty-small">Vous n'avez pas encore publié de trajet.</div>
+
+            <div class="empty-small">
+                Vous n'avez pas encore publié de trajet.
+            </div>
+
         {% endif %}
     </section>
 
+
+    <!-- MES RESERVATIONS -->
     <section class="dashboard-section">
+
         <div class="section-heading compact">
             <h2>Mes réservations</h2>
-            <a href="{% url 'my_reservations' %}">Tout voir</a>
+            <a href="{% url 'my_reservations' %}">
+                Tout voir
+            </a>
         </div>
 
         {% if my_reservations %}
+
             {% for reservation in my_reservations %}
+
                 <article class="mini-card">
+
                     <div>
-                        <strong>{{ reservation.trip.departure }} → {{ reservation.trip.destination }}</strong>
-                        <span>{{ reservation.trip.date|date:"d/m/Y" }} · {{ reservation.trip.departure_time|time:"H:i" }}</span>
+
+                        <strong>
+                            {{ reservation.trip.departure }}
+                            →
+                            {{ reservation.trip.destination }}
+                        </strong>
+
+                        <span>
+                            {{ reservation.trip.date|date:"d/m/Y" }}
+                            ·
+                            {{ reservation.trip.departure_time|time:"H:i" }}
+                        </span>
+
+                        <span>
+                            Conducteur :
+                            {{ reservation.trip.driver.username }}
+                        </span>
+
+                        {% if reservation.status == "pending" %}
+                            <span>
+                                🟠 En attente de validation du conducteur
+                            </span>
+                        {% elif reservation.status == "confirmed" %}
+                            <span>
+                                🟢 Trajet accepté ✓
+                            </span>
+                        {% elif reservation.status == "rejected" %}
+                            <span>
+                                🔴 Demande refusée
+                            </span>
+                        {% endif %}
+
                     </div>
-                    <a href="{% url 'trip_detail' reservation.trip.pk %}">Voir</a>
+
+                    <a href="{% url 'trip_detail' reservation.trip.pk %}">
+                        Voir
+                    </a>
+
                 </article>
+
             {% endfor %}
+
         {% else %}
-            <div class="empty-small">Vous n'avez aucune réservation active.</div>
+
+            <div class="empty-small">
+                Vous n'avez aucune réservation active.
+            </div>
+
         {% endif %}
+
     </section>
+
 </div>
 {% endblock %}
