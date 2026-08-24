@@ -2,7 +2,6 @@ from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.db import transaction
 from django.db.models import Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import render
@@ -147,16 +146,14 @@ def rewards_dashboard(request):
 
     leaderboard = (
         User.objects
+        .exclude(username="Test")
         .annotate(
             total_points=Coalesce(
                 Sum("point_transactions__points"),
                 Value(0),
             )
         )
-        .order_by(
-            "-total_points",
-            "username",
-        )
+        .order_by("-total_points", "username")
     )
 
     # ============================================================
