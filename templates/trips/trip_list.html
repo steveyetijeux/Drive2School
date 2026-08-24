@@ -3,6 +3,7 @@
 {% block title %}Trajets — Drive2School{% endblock %}
 
 {% block content %}
+
 <section class="page-header">
     <div class="container">
         <span class="eyebrow">DRIVE2SCHOOL</span>
@@ -12,26 +13,62 @@
 </section>
 
 <div class="container">
+
     <form method="get" class="search-card">
         <div>
             <label for="q">Départ ou destination</label>
-            <input id="q" name="q" type="search" value="{{ query }}" placeholder="Ex. Dublin, Cork...">
+            <input
+                id="q"
+                name="q"
+                type="search"
+                value="{{ query }}"
+                placeholder="Ex. Dublin, Cork..."
+            >
         </div>
+
         <div>
             <label for="date">Date</label>
-            <input id="date" name="date" type="date" value="{{ selected_date }}">
+            <input
+                id="date"
+                name="date"
+                type="date"
+                value="{{ selected_date }}"
+            >
         </div>
-        <button class="button button-primary" type="submit">Rechercher</button>
-        <a class="button button-secondary" href="{% url 'trip_list' %}">Réinitialiser</a>
+
+        <button class="button button-primary" type="submit">
+            Rechercher
+        </button>
+
+        <a
+            class="button button-secondary"
+            href="{% url 'trip_list' %}"
+        >
+            Réinitialiser
+        </a>
     </form>
 
+
+    <!-- TRAJETS À VENIR -->
+
     {% if trips %}
+
         <div class="trip-grid">
+
             {% for trip in trips %}
+
                 <article class="trip-card">
+
                     <div class="trip-top">
-                        <span class="date-badge">{{ trip.date|date:"d/m/Y" }}</span>
-                        <span class="seats-badge">{{ trip.remaining_seats }} place{{ trip.remaining_seats|pluralize }} restante{{ trip.remaining_seats|pluralize }}</span>
+                        <span class="date-badge">
+                            {{ trip.date|date:"d/m/Y" }}
+                        </span>
+
+                        <span class="seats-badge">
+                            {{ trip.remaining_seats }}
+                            place{{ trip.remaining_seats|pluralize }}
+                            restante{{ trip.remaining_seats|pluralize }}
+                        </span>
                     </div>
 
                     <div class="route">
@@ -41,28 +78,141 @@
                     </div>
 
                     <div class="trip-meta">
-                        <span>{{ trip.departure_time|time:"H:i" }} — {{ trip.arrival_time|time:"H:i" }}</span>
-                        <span>Conducteur : {{ trip.driver.username }}</span>
+                        <span>
+                            {{ trip.departure_time|time:"H:i" }}
+                            —
+                            {{ trip.arrival_time|time:"H:i" }}
+                        </span>
+
+                        <span>
+                            Conducteur : {{ trip.driver.username }}
+                        </span>
                     </div>
 
                     {% if trip.description %}
-                        <p>{{ trip.description|truncatechars:120 }}</p>
+                        <p>
+                            {{ trip.description|truncatechars:120 }}
+                        </p>
                     {% endif %}
 
-                    <a class="button button-primary full" href="{% url 'trip_detail' trip.pk %}">
+                    <a
+                        class="button button-primary full"
+                        href="{% url 'trip_detail' trip.pk %}"
+                    >
                         Voir le trajet
                     </a>
+
                 </article>
+
             {% endfor %}
+
         </div>
+
     {% else %}
+
         <div class="empty-state">
-            <h2>Aucun trajet trouvé</h2>
-            <p>Essayez une autre recherche ou publiez le premier trajet.</p>
+            <h2>Aucun trajet disponible</h2>
+
+            <p>
+                Aucun trajet correspondant à votre recherche
+                n'est actuellement disponible.
+            </p>
+
             {% if user.is_authenticated %}
-                <a class="button button-primary" href="{% url 'trip_create' %}">Publier un trajet</a>
+                <a
+                    class="button button-primary"
+                    href="{% url 'trip_create' %}"
+                >
+                    Publier un trajet
+                </a>
             {% endif %}
         </div>
+
     {% endif %}
+
+
+    <!-- ARCHIVES -->
+
+    {% if archived_trips %}
+
+        <section class="trip-archives">
+
+            <div class="page-header">
+                <div class="container">
+                    <span class="eyebrow">HISTORIQUE</span>
+
+                    <h2>
+                        Trajets passés
+                    </h2>
+
+                    <p>
+                        Ces trajets sont terminés et ne sont plus disponibles
+                        à la réservation.
+                    </p>
+                </div>
+            </div>
+
+            <div class="trip-grid">
+
+                {% for trip in archived_trips %}
+
+                    <article class="trip-card trip-card-archived">
+
+                        <div class="trip-top">
+
+                            <span class="date-badge">
+                                {{ trip.date|date:"d/m/Y" }}
+                            </span>
+
+                            <span class="seats-badge">
+                                Trajet terminé
+                            </span>
+
+                        </div>
+
+                        <div class="route">
+                            <strong>{{ trip.departure }}</strong>
+                            <span>→</span>
+                            <strong>{{ trip.destination }}</strong>
+                        </div>
+
+                        <div class="trip-meta">
+
+                            <span>
+                                {{ trip.departure_time|time:"H:i" }}
+                                —
+                                {{ trip.arrival_time|time:"H:i" }}
+                            </span>
+
+                            <span>
+                                Conducteur : {{ trip.driver.username }}
+                            </span>
+
+                        </div>
+
+                        {% if trip.description %}
+                            <p>
+                                {{ trip.description|truncatechars:120 }}
+                            </p>
+                        {% endif %}
+
+                        <a
+                            class="button button-secondary full"
+                            href="{% url 'trip_detail' trip.pk %}"
+                        >
+                            Voir le trajet
+                        </a>
+
+                    </article>
+
+                {% endfor %}
+
+            </div>
+
+        </section>
+
+    {% endif %}
+
 </div>
+
 {% endblock %}
