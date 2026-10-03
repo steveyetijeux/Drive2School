@@ -5,10 +5,12 @@ from django.db import models
 class PointTransaction(models.Model):
     TYPE_TRIP = "trip"
     TYPE_PASSENGER = "passenger"
+    TYPE_PASSENGER_RIDE = "passenger_ride"
 
     TYPE_CHOICES = [
         (TYPE_TRIP, "Trajet effectué"),
-        (TYPE_PASSENGER, "Passager transporté"),
+        (TYPE_PASSENGER, "Passager transporté (conducteur)"),
+        (TYPE_PASSENGER_RIDE, "Trajet effectué en tant que passager"),
     ]
 
     user = models.ForeignKey(
@@ -20,7 +22,7 @@ class PointTransaction(models.Model):
     points = models.PositiveIntegerField()
 
     transaction_type = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=TYPE_CHOICES,
     )
 
@@ -46,7 +48,6 @@ class PointTransaction(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
-
         constraints = [
             models.UniqueConstraint(
                 fields=["user", "trip", "transaction_type"],

@@ -295,6 +295,12 @@
         </div>
 
 
+        <form method="get" class="leaderboard-period" style="display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0">
+            <button class="button {% if selected_period == 'week' %}button-primary{% else %}button-secondary{% endif %}" name="period" value="week" type="submit">Cette semaine</button>
+            <button class="button {% if selected_period == 'month' %}button-primary{% else %}button-secondary{% endif %}" name="period" value="month" type="submit">Ce mois</button>
+            <button class="button {% if selected_period == 'all' %}button-primary{% else %}button-secondary{% endif %}" name="period" value="all" type="submit">Général</button>
+        </form>
+
         <div class="leaderboard-card">
 
             {% for player in leaderboard %}
@@ -401,7 +407,7 @@
                         </strong>
 
                         <span>
-                            {{ transaction.created_at|date:"d/m/Y à H:i" }}
+                            {{ transaction.created_at|date:"l j F Y à H:i" }}
                         </span>
 
                     </div>

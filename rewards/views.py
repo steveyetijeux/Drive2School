@@ -1,21 +1,18 @@
-from datetime import datetime
+from datetime import datetime, time, timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.db.models import Sum, Value
+from django.db import transaction
+from django.db.models import Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import render
 from django.utils import timezone
 
 from reservations.models import Reservation
 from trips.models import Trip
-
+from trips.utils import trip_is_finished
 from .models import PointTransaction
 
-
-# ============================================================
-# RÉCOMPENSES
-# ============================================================
 
 REWARD_LEVELS = [
     (25, "Badge Pilote"),
@@ -26,336 +23,149 @@ REWARD_LEVELS = [
     (500, "Shooting photo personnalisé 📸"),
 ]
 
-
-# ============================================================
-# BADGES CONDUCTEUR
-# ============================================================
-
 DRIVER_BADGES = [
-    {
-        "points": 25,
-        "name": "Pilote",
-        "icon": "🥉",
-        "description": (
-            "Vous commencez à vous faire une place "
-            "dans la communauté."
-        ),
-        "level": 1,
-    },
-    {
-        "points": 50,
-        "name": "Pilote confirmé",
-        "icon": "🥈",
-        "description": (
-            "Un conducteur fiable et régulier."
-        ),
-        "level": 2,
-    },
-    {
-        "points": 100,
-        "name": "Pilote expert",
-        "icon": "🥇",
-        "description": (
-            "Vous êtes devenu un conducteur incontournable."
-        ),
-        "level": 3,
-    },
-    {
-        "points": 200,
-        "name": "Pilote Drive2School",
-        "icon": "🏆",
-        "description": (
-            "Un véritable pilier de la communauté Drive2School."
-        ),
-        "level": 4,
-    },
+    {"points": 25, "name": "Pilote", "icon": "🥉", "description": "Vous commencez à vous faire une place dans la communauté.", "level": 1},
+    {"points": 50, "name": "Pilote confirmé", "icon": "🥈", "description": "Un conducteur fiable et régulier.", "level": 2},
+    {"points": 100, "name": "Pilote expert", "icon": "🥇", "description": "Vous êtes devenu un conducteur incontournable.", "level": 3},
+    {"points": 200, "name": "Pilote Drive2School", "icon": "🏆", "description": "Un véritable pilier de la communauté Drive2School.", "level": 4},
 ]
 
 
-# ============================================================
-# TRAJET TERMINÉ ?
-# ============================================================
-
-def trip_is_finished(trip):
-    """
-    Retourne True si le trajet est terminé.
-
-    Le trajet est considéré comme terminé lorsque
-    son heure d'arrivée est dépassée.
-    """
-
-    current_time = timezone.localtime()
-
-    trip_datetime = timezone.make_aware(
-        datetime.combine(
-            trip.date,
-            trip.arrival_time,
-        ),
-        timezone.get_current_timezone(),
-    )
-
-    return trip_datetime <= current_time
-
-
-# ============================================================
-# ATTRIBUTION DES POINTS
-# ============================================================
-
 def award_points_for_finished_trips(user=None):
-    """
-    Attribue automatiquement les points pour les trajets terminés.
-
-    CONDUCTEUR :
-        +1 point par trajet terminé
-        +2 points par passager confirmé transporté
-
-    PASSAGER :
-        Aucun point pour le moment.
-
-    get_or_create() empêche les doublons.
-    """
-
-    trips = Trip.objects.all()
-
+    """Attribue une seule fois les points des trajets arrivés à destination."""
+    trips = Trip.objects.select_related("driver")
     if user is not None:
         trips = trips.filter(driver=user)
 
     for trip in trips:
-
-        # --------------------------------------------------------
-        # Le trajet doit être terminé
-        # --------------------------------------------------------
-
         if not trip_is_finished(trip):
             continue
-
-        # --------------------------------------------------------
-        # Récupération des passagers confirmés
-        # --------------------------------------------------------
-
-        reservations = (
-            Reservation.objects
-            .filter(
-                trip=trip,
-                status=Reservation.STATUS_CONFIRMED,
-            )
-            .select_related("passenger")
-        )
-
-        passenger_count = reservations.count()
-
-        # --------------------------------------------------------
-        # CONDUCTEUR : +1 point pour le trajet
-        # --------------------------------------------------------
-
-        PointTransaction.objects.get_or_create(
-            user=trip.driver,
-            trip=trip,
-            transaction_type=PointTransaction.TYPE_TRIP,
-            defaults={
-                "points": 1,
-                "description": (
-                    f"Trajet effectué : "
-                    f"{trip.departure} → {trip.destination}"
-                ),
-            },
-        )
-
-        # --------------------------------------------------------
-        # CONDUCTEUR : +2 points par passager
-        # --------------------------------------------------------
-
-        if passenger_count > 0:
-
-            passenger_points = passenger_count * 2
-
+        with transaction.atomic():
             PointTransaction.objects.get_or_create(
                 user=trip.driver,
                 trip=trip,
-                transaction_type=PointTransaction.TYPE_PASSENGER,
+                transaction_type=PointTransaction.TYPE_TRIP,
                 defaults={
-                    "points": passenger_points,
-                    "description": (
-                        f"{passenger_count} passager"
-                        f"{'s' if passenger_count > 1 else ''} "
-                        f"transporté"
-                        f"{'s' if passenger_count > 1 else ''} : "
-                        f"{trip.departure} → {trip.destination}"
-                    ),
+                    "points": 1,
+                    "description": f"Trajet effectué : {trip.departure} → {trip.destination}",
                 },
             )
 
+            confirmed = list(
+                Reservation.objects.select_related("passenger").filter(
+                    trip=trip, status=Reservation.STATUS_CONFIRMED
+                )
+            )
+            if confirmed:
+                PointTransaction.objects.get_or_create(
+                    user=trip.driver,
+                    trip=trip,
+                    transaction_type=PointTransaction.TYPE_PASSENGER,
+                    defaults={
+                        "points": len(confirmed) * 2,
+                        "description": (
+                            f"{len(confirmed)} passager{'s' if len(confirmed) != 1 else ''} "
+                            f"transporté{'s' if len(confirmed) != 1 else ''} : "
+                            f"{trip.departure} → {trip.destination}"
+                        ),
+                    },
+                )
+                # Le passager gagne +1 une fois son trajet passé et sa réservation confirmée.
+                for reservation in confirmed:
+                    PointTransaction.objects.get_or_create(
+                        user=reservation.passenger,
+                        trip=trip,
+                        transaction_type=PointTransaction.TYPE_PASSENGER_RIDE,
+                        defaults={
+                            "points": 1,
+                            "reservation": reservation,
+                            "description": (
+                                f"Trajet effectué en tant que passager : "
+                                f"{trip.departure} → {trip.destination}"
+                            ),
+                        },
+                    )
 
-# ============================================================
-# POINTS D'UN UTILISATEUR
-# ============================================================
 
 def get_user_points(user):
-    """
-    Retourne le nombre total de points conducteur
-    d'un utilisateur.
+    return PointTransaction.objects.filter(user=user).aggregate(
+        total=Coalesce(Sum("points"), Value(0))
+    )["total"]
 
-    Les points pris en compte sont :
-        - TYPE_TRIP
-        - TYPE_PASSENGER
-    """
-
-    return (
-        PointTransaction.objects
-        .filter(
-            user=user,
-            transaction_type__in=[
-                PointTransaction.TYPE_TRIP,
-                PointTransaction.TYPE_PASSENGER,
-            ],
-        )
-        .aggregate(
-            total=Coalesce(
-                Sum("points"),
-                Value(0),
-            )
-        )["total"]
-    )
-
-
-# ============================================================
-# BADGE ACTUEL DU CONDUCTEUR
-# ============================================================
 
 def get_driver_badge(points):
-    """
-    Retourne le badge conducteur correspondant
-    au nombre de points.
-    """
-
-    current_badge = None
-
-    for badge in DRIVER_BADGES:
-        if points >= badge["points"]:
-            current_badge = badge
+    badge = None
+    for item in DRIVER_BADGES:
+        if points >= item["points"]:
+            badge = item
         else:
             break
+    return badge
 
-    return current_badge
-
-
-# ============================================================
-# PROCHAIN BADGE
-# ============================================================
 
 def get_next_driver_badge(points):
-    """
-    Retourne le prochain badge à débloquer.
-    """
-
-    for badge in DRIVER_BADGES:
-        if points < badge["points"]:
+    for item in DRIVER_BADGES:
+        if points < item["points"]:
             return {
-                "points": badge["points"],
-                "name": badge["name"],
-                "icon": badge["icon"],
-                "remaining": badge["points"] - points,
+                "points": item["points"], "name": item["name"],
+                "icon": item["icon"], "remaining": item["points"] - points,
             }
-
     return None
 
 
-# ============================================================
-# PAGE REWARDS
-# ============================================================
+def _period_start(period, now):
+    today = timezone.localdate(now)
+    if period == "week":
+        start_date = today - timedelta(days=today.weekday())
+    elif period == "month":
+        start_date = today.replace(day=1)
+    else:
+        return None
+    return timezone.make_aware(datetime.combine(start_date, time.min), timezone.get_current_timezone())
+
 
 @login_required
 def rewards_dashboard(request):
-    """
-    Page principale des récompenses.
-    """
-
-    # --------------------------------------------------------
-    # Mise à jour des points des trajets terminés
-    # --------------------------------------------------------
-
+    # On attribue les points des trajets arrivés à échéance avant d'afficher les totaux.
     award_points_for_finished_trips()
-
-    # --------------------------------------------------------
-    # Points de l'utilisateur connecté
-    # --------------------------------------------------------
-
     user_points = get_user_points(request.user)
+    period = request.GET.get("period", "all")
+    if period not in {"week", "month", "all"}:
+        period = "all"
 
-    # --------------------------------------------------------
-    # Badge actuel
-    # --------------------------------------------------------
-
-    driver_badge = get_driver_badge(user_points)
-
-    # --------------------------------------------------------
-    # Prochain badge
-    # --------------------------------------------------------
-
-    next_driver_badge = get_next_driver_badge(user_points)
-
-    # ========================================================
-    # CLASSEMENT
-    # ========================================================
+    leaderboard_transactions = PointTransaction.objects.all()
+    start = _period_start(period, timezone.now())
+    if start is not None:
+        leaderboard_transactions = leaderboard_transactions.filter(created_at__gte=start)
 
     leaderboard = (
-        User.objects
-        .exclude(username="Test")
-        .annotate(
-            total_points=Coalesce(
-                Sum(
-                    "point_transactions__points",
-                    filter=None,
+        User.objects.exclude(username="Test")
+        .annotate(total_points=Coalesce(
+            Sum(
+                "point_transactions__points",
+                filter=(
+                    Q(point_transactions__created_at__gte=start)
+                    if start is not None else Q()
                 ),
-                Value(0),
-            )
-        )
-        .order_by(
-            "-total_points",
-            "username",
-        )
+            ),
+            Value(0),
+        ))
+        .order_by("-total_points", "username")
     )
 
-    # ========================================================
-    # HISTORIQUE DES TRANSACTIONS
-    # ========================================================
+    transactions = PointTransaction.objects.filter(user=request.user).select_related("trip").order_by("-created_at")[:20]
+    next_reward = next((
+        {"points": threshold, "name": name, "remaining": threshold - user_points}
+        for threshold, name in REWARD_LEVELS if user_points < threshold
+    ), None)
 
-    transactions = (
-        PointTransaction.objects
-        .filter(user=request.user)
-        .select_related("trip")
-        .order_by("-created_at")
-    )[:20]
-
-    # ========================================================
-    # PROCHAINE RÉCOMPENSE
-    # ========================================================
-
-    next_reward = None
-
-    for threshold, name in REWARD_LEVELS:
-        if user_points < threshold:
-            next_reward = {
-                "points": threshold,
-                "name": name,
-                "remaining": threshold - user_points,
-            }
-            break
-
-    # ========================================================
-    # AFFICHAGE
-    # ========================================================
-
-    return render(
-        request,
-        "rewards/rewards.html",
-        {
-            "user_points": user_points,
-            "leaderboard": leaderboard,
-            "transactions": transactions,
-            "next_reward": next_reward,
-            "reward_levels": REWARD_LEVELS,
-            "driver_badge": driver_badge,
-            "next_driver_badge": next_driver_badge,
-        },
-    )
+    return render(request, "rewards/rewards.html", {
+        "user_points": user_points,
+        "leaderboard": leaderboard,
+        "transactions": transactions,
+        "next_reward": next_reward,
+        "reward_levels": REWARD_LEVELS,
+        "driver_badge": get_driver_badge(user_points),
+        "next_driver_badge": get_next_driver_badge(user_points),
+        "selected_period": period,
+    })
